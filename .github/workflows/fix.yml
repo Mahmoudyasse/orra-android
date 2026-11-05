@@ -1,0 +1,94 @@
+name: Fix structure
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix
+        run: |
+          set -e
+          J=app/src/main/java/com/orra/app
+          R=app/src/main/res
+          mkdir -p $J $R/values $R/drawable $R/mipmap-anydpi-v26
+          if [ -d '`app' ]; then cp -rn '`app'/. app/ || true; git rm -rq '`app'; fi
+          mv_ () { if [ -f "$1" ]; then mv -f "$1" "$2"; fi; }
+          mv_ AndroidManifest.xml app/src/main/AndroidManifest.xml
+          for f in MainActivity DialerScreen Theme Neon Wordmark; do mv_ $f.kt $J/$f.kt; done
+          mv_ colors.xml $R/values/colors.xml
+          mv_ themes.xml $R/values/themes.xml
+          mv_ ic_launcher.xml $R/mipmap-anydpi-v26/ic_launcher.xml
+          mv_ ic_launcher_foreground.xml $R/drawable/ic_launcher_foreground.xml
+          mv_ ic_launcher_monochrome.xml $R/drawable/ic_launcher_monochrome.xml
+          rm -f orra-android.zip "main (2).yml"
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.5.2" apply false
+              id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+          }
+          EOF
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories { google(); mavenCentral(); gradlePluginPortal() }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "Orra"
+          include(":app")
+          EOF
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+          cat > app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+          }
+
+          android {
+              namespace = "com.orra.app"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = "com.orra.app"
+                  minSdk = 26
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "0.1.0"
+              }
+              buildTypes {
+                  release { isMinifyEnabled = false }
+              }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions { jvmTarget = "17" }
+              buildFeatures { compose = true }
+              composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+          }
+
+          dependencies {
+              implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.compose.foundation:foundation")
+              implementation("androidx.compose.material3:material3")
+              implementation("androidx.compose.material:material-icons-core")
+              implementation("androidx.compose.material:material-icons-extended")
+              implementation("androidx.activity:activity-compose:1.9.0")
+              implementation("androidx.core:core-ktx:1.13.1")
+          }
+          EOF
+          test -f app/src/main/AndroidManifest.xml
+          test -f $J/MainActivity.kt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A
+          git commit -m "Fix project structure" || true
+          git push
