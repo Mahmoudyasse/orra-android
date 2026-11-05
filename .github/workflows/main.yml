@@ -1,74 +1,30 @@
-Skip to content
-Mahmoudyasse
-orra-android
-Repository navigation
-Code
-Issues
-Pull requests
-Agents
-Actions
-Projects
-Wiki
-Security and quality
-Build APK
-Create Gradle files in GitHub Actions workflow #10
-All jobs
-Run details
-Annotations
-1 error, 2 warnings, and 1 notice
-build
-failed now in 50s
-Search logs
-2s
-0s
-0s
-1s
-7s
-33s
-Run gradle assembleDebug --no-daemon
-To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.7/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
-Daemon will be stopped at the end of the build 
-> Task :app:preBuild UP-TO-DATE
-> Task :app:preDebugBuild UP-TO-DATE
-> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
-> Task :app:checkKotlinGradlePluginConfigurationErrors
-> Task :app:generateDebugResValues
-> Task :app:checkDebugAarMetadata
-> Task :app:mapDebugSourceSetPaths
-> Task :app:generateDebugResources
-> Task :app:packageDebugResources
-> Task :app:mergeDebugResources
-> Task :app:createDebugCompatibleScreenManifests
-> Task :app:extractDeepLinksDebug
-> Task :app:parseDebugLocalResources
-> Task :app:processDebugMainManifest FAILED
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1793857215659.json
-
-FAILURE: Build failed with an exception.
-11 actionable tasks: 11 executed
-
-* What went wrong:
-A problem was found with the configuration of task ':app:processDebugMainManifest' (type 'ProcessApplicationManifest').
-  - In plugin 'com.android.internal.version-check' type 'com.android.build.gradle.tasks.ProcessApplicationManifest' property 'mainManifest' specifies file '/home/runner/work/orra-android/orra-android/app/src/main/AndroidManifest.xml' which doesn't exist.
-    
-    Reason: An input file was expected to be present but it doesn't exist.
-    
-    Possible solutions:
-      1. Make sure the file exists before the task is called.
-      2. Make sure that the task which produces the file is declared as an input.
-    
-    For more information, please refer to https://docs.gradle.org/8.7/userguide/validation_problems.html#input_file_does_not_exist in the Gradle documentation.
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 32s
-Error: Process completed with exit code 1.
-0s
-4s
-0s
-0s
-0s
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - name: Verify Android project files
+        run: |
+          test -f settings.gradle.kts
+          test -f app/build.gradle.kts
+          test -f app/src/main/AndroidManifest.xml
+          test -f app/src/main/java/com/orra/app/MainActivity.kt
+          echo "Android project files are present."
+      - name: Build debug APK
+        run: gradle :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Orra-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
